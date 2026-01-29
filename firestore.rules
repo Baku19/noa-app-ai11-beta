@@ -1,0 +1,185 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return request.auth.token.admin == true;
+    }
+    
+    function belongsToFamily(familyId) {
+      return isSignedIn() && (
+        request.auth.token.familyId == familyId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId == familyId
+      );
+    }
+    
+    function isPrimaryParent(familyId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/families/$(familyId)).data.primaryParentUid == request.auth.uid;
+    }
+    
+    function onlyAllowedFields(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+    
+    match /users/{uid} {
+      allow read: if request.auth.uid == uid;
+      allow create: if request.auth.uid == uid;
+      allow update: if request.auth.uid == uid &&
+        onlyAllowedFields(['displayName', 'photoURL', 'preferences', 'firstVisitComplete']);
+      allow delete: if false;
+    }
+    
+    match /families/{familyId} {
+      allow read: if belongsToFamily(familyId);
+      allow create: if isSignedIn();
+      allow update: if isPrimaryParent(familyId) &&
+        onlyAllowedFields(['familyName']);
+      allow delete: if false;
+      
+      match /billing/system {
+        allow read: if false;
+        allow write: if false;
+      }
+      
+      match /billing/public {
+        allow read: if belongsToFamily(familyId);
+        allow write: if false;
+      }
+      
+      match /parents/{parentId} {
+        allow read: if belongsToFamily(familyId);
+        allow create: if belongsToFamily(familyId);
+        allow update: if belongsToFamily(familyId) &&
+          onlyAllowedFields(['name', 'relation', 'notificationsEnabled', 'weeklyDigestEnabled']);
+        allow delete: if isPrimaryParent(familyId);
+      }
+      
+      match /scholars/{scholarId} {
+        allow read: if belongsToFamily(familyId);
+        allow create: if belongsToFamily(familyId);
+        allow update: if belongsToFamily(familyId) &&
+          onlyAllowedFields(['nickname', 'avatarColor', 'avatarEmoji', 'settings']);
+        allow delete: if isPrimaryParent(familyId);
+        
+        match /topicProgress/{topicId} {
+          allow read: if belongsToFamily(familyId);
+          allow write: if false;
+        }
+        
+        match /confidenceTracking/{domain} {
+          allow read: if belongsToFamily(familyId);
+          allow write: if false;
+        }
+        
+        match /weeklyStats/{weekId} {
+          allow read: if belongsToFamily(familyId);
+          allow write: if false;
+        }
+        
+        match /insights/{insightId} {
+          allow read: if belongsToFamily(familyId);
+          allow write: if false;
+        }
+        
+        match /writingAssignments/{assignmentId} {
+          allow read: if belongsToFamily(familyId);
+          allow create: if belongsToFamily(familyId);
+          allow update: if belongsToFamily(familyId) &&
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['analysis', 'feedback']);
+          allow delete: if false;
+        }
+      }
+      
+      match /sessions/{sessionId} {
+        allow read: if belongsToFamily(familyId);
+        allow create: if belongsToFamily(familyId);
+        allow update: if belongsToFamily(familyId) &&
+          onlyAllowedFields(['status', 'startedAt', 'completedAt', 'scholarFeedback']);
+        allow delete: if false;
+        
+        match /serverData/resultsPublic {
+          allow read: if belongsToFamily(familyId);
+          allow write: if false;
+        }
+        
+        match /serverData/resultsPrivate {
+          allow read: if false;
+          allow write: if false;
+        }
+        
+        match /responses/{responseId} {
+          allow read: if belongsToFamily(familyId);
+          allow create: if belongsToFamily(familyId) &&
+            !request.resource.data.keys().hasAny(['evaluation', 'serverSignals', 'guidance', 'hintsProvided']);
+          allow update: if false;
+          allow delete: if false;
+        }
+      }
+    }
+    
+    match /subscriptions/{subscriptionId} {
+      allow read: if isSignedIn() && resource.data.primaryParentUid == request.auth.uid;
+      allow write: if false;
+    }
+    
+    match /inviteCodes/{codeId} {
+      allow read: if false;
+      allow write: if false;
+    }
+    
+    match /schools/{schoolId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    match /questionBankPublic/{questionId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    
+    match /questionBankPrivate/{questionId} {
+      allow read: if false;
+      allow write: if false;
+    }
+    
+    match /promptsMeta/{aiModule} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    
+    match /promptsPrivate/{aiModule} {
+      allow read: if false;
+      allow write: if false;
+      
+      match /versions/{version} {
+        allow read: if false;
+        allow write: if false;
+      }
+    }
+    
+    match /coordinationObjects/{coordId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    
+    match /aiRuns/{runId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    
+    match /cohortSignals/{signalId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    
+    match /validationFixtures/{fixtureId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}
