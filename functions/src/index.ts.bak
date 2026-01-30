@@ -245,9 +245,6 @@ export const createCustomerPortalSession = onCall(
   }
 );
 
-// ═══════════════════════════════════════════════════════════════
-// generateScholarCode - Creates scholar and generates login code
-// ═══════════════════════════════════════════════════════════════
 export const generateScholarCode = onCall(
   {region: REGION},
   async (request) => {
@@ -255,58 +252,20 @@ export const generateScholarCode = onCall(
       throw new HttpsError("unauthenticated", "Must be logged in");
     }
 
-    const uid = request.auth.uid;
-    const {scholarData} = request.data;
+    const {familyId, scholarId} = request.data;
 
-    if (!scholarData || !scholarData.name || !scholarData.yearLevel) {
-      throw new HttpsError("invalid-argument", "Missing required scholar data");
-    }
-
-    // Get user's familyId
-    const userDoc = await db.collection("users").doc(uid).get();
-    if (!userDoc.exists) {
-      throw new HttpsError("not-found", "User profile not found");
-    }
-    const familyId = userDoc.data()?.familyId;
-    if (!familyId) {
-      throw new HttpsError("failed-precondition", "No family associated with user");
-    }
-
-    // Create scholar document
-    const scholarRef = db.collection("families").doc(familyId).collection("scholars").doc();
-    const scholarId = scholarRef.id;
-
-    // Generate login code
     const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     let code = "";
     for (let i = 0; i < 6; i++) {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
+
     const codeHash = await bcrypt.hash(code, 12);
     const lookupKey = crypto
       .createHmac("sha256", "noa-scholar-code")
       .update(code)
       .digest("hex");
 
-    // Create scholar with loginCode
-    await scholarRef.set({
-      name: scholarData.name,
-      dateOfBirth: scholarData.dateOfBirth || null,
-      yearLevel: scholarData.yearLevel,
-      school: scholarData.school || null,
-      schoolData: scholarData.schoolData || null,
-      avatarColor: scholarData.avatarColor || "bg-emerald-500",
-      settings: scholarData.settings || {
-        dailySessionMinutes: 20,
-        notificationsEnabled: true
-      },
-      hasLoginCode: true,
-      loginCode: code,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      createdBy: uid
-    });
-
-    // Create invite code entry
     await db.collection("inviteCodes").doc(lookupKey).set({
       type: "SCHOLAR_LOGIN",
       codeHash,
@@ -316,94 +275,7 @@ export const generateScholarCode = onCall(
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    return {
-      success: true,
-      code,
-      loginCode: code,
-      scholarId,
-      scholarName: scholarData.name
-    };
-  }
-);
-
-// ═══════════════════════════════════════════════════════════════
-// regenerateScholarCode - Generate new code for existing scholar
-// ═══════════════════════════════════════════════════════════════
-export const regenerateScholarCode = onCall(
-  {region: REGION},
-  async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "Must be logged in");
-    }
-
-    const uid = request.auth.uid;
-    const {scholarId} = request.data;
-
-    if (!scholarId) {
-      throw new HttpsError("invalid-argument", "Missing scholarId");
-    }
-
-    // Get user's familyId
-    const userDoc = await db.collection("users").doc(uid).get();
-    if (!userDoc.exists) {
-      throw new HttpsError("not-found", "User profile not found");
-    }
-    const familyId = userDoc.data()?.familyId;
-    if (!familyId) {
-      throw new HttpsError("failed-precondition", "No family associated");
-    }
-
-    // Verify scholar belongs to family
-    const scholarRef = db.collection("families").doc(familyId).collection("scholars").doc(scholarId);
-    const scholarDoc = await scholarRef.get();
-    if (!scholarDoc.exists) {
-      throw new HttpsError("not-found", "Scholar not found");
-    }
-
-    // Invalidate old codes
-    const oldCodes = await db.collection("inviteCodes")
-      .where("scholarId", "==", scholarId)
-      .where("status", "==", "ACTIVE")
-      .get();
-
-    const batch = db.batch();
-    oldCodes.docs.forEach(doc => batch.update(doc.ref, {status: "REVOKED"}));
-
-    // Generate new code
-    const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-    let code = "";
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    const codeHash = await bcrypt.hash(code, 12);
-    const lookupKey = crypto
-      .createHmac("sha256", "noa-scholar-code")
-      .update(code)
-      .digest("hex");
-
-    // Create new invite code
-    batch.set(db.collection("inviteCodes").doc(lookupKey), {
-      type: "SCHOLAR_LOGIN",
-      codeHash,
-      familyId,
-      scholarId,
-      status: "ACTIVE",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    // Update scholar with new code
-    batch.update(scholarRef, {
-      hasLoginCode: true,
-      loginCode: code
-    });
-
-    await batch.commit();
-
-    return {
-      success: true,
-      loginCode: code,
-      scholarId
-    };
+    return {code};
   }
 );
 

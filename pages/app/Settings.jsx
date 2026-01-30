@@ -7,6 +7,8 @@
 import React, { useState } from 'react';
 import { Settings as SettingsIcon, Users, Info, BookUser } from 'lucide-react';
 import { SETTINGS_TABS } from '../../lib/copy.js';
+import { httpsCallable } from "firebase/functions";
+import { functions } from "../../config/firebase.js";
 import { useAuth } from '../../lib/AuthContext.jsx';
 
 // Tab components
@@ -61,13 +63,27 @@ export default function Settings() {
 
   const copyToClipboard = (code) => {
     navigator.clipboard.writeText(code);
-    // Would show toast notification
   };
 
   const handleScholarSaved = async () => {
     await refreshScholars();
     setShowAddScholar(false);
     setShowEditScholar(null);
+  };
+
+  const handleRegenerateCode = async (scholarId) => {
+    try {
+      const regenerate = httpsCallable(functions, 'regenerateScholarCode');
+      const result = await regenerate({ scholarId });
+      if (result.data.success) {
+        alert('New login code: ' + result.data.loginCode);
+        await refreshScholars();
+        setShowEditScholar(null);
+      }
+    } catch (err) {
+      console.error('Regenerate error:', err);
+      alert('Failed to regenerate code');
+    }
   };
 
   const TABS = [
@@ -164,9 +180,7 @@ export default function Settings() {
           onClose={() => setShowEditScholar(null)}
           onSave={handleScholarSaved}
           onDelete={handleScholarSaved}
-          onRegenerateCode={(id) => { 
-            console.log('Regenerate code for:', id); 
-          }}
+          onRegenerateCode={handleRegenerateCode}
           isDemo={isDemo}
         />
       )}

@@ -40,6 +40,10 @@ import {
   getDemoSessionsForScholar,
   getDemoSummaryForScholar
 } from '../../lib/demoData.js';
+import { 
+  useScholarSessions,
+  useScholarWeeklyStats
+} from '../../hooks/useFirestoreData.js';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
@@ -88,7 +92,7 @@ const NoSessionsYet = ({ childName }) => (
 // DATA HELPERS
 // ═══════════════════════════════════════════════════════════════
 
-const getDataForChild = (selectedChild, isDemo) => {
+const getDataForChild = (selectedChild, isDemo, firestoreSessions = [], firestoreWeeklyStats = []) => {
   if (!selectedChild) return { thisWeek: null, lastWeek: null, sessions: [], summary: null, hasData: false };
   
   if (isDemo) {
@@ -108,8 +112,16 @@ const getDataForChild = (selectedChild, isDemo) => {
     };
   }
   
-  // Real user - no session data yet (will come from Firestore later)
-  return { thisWeek: null, lastWeek: null, sessions: [], summary: null, hasData: false };
+  // Real user - use Firestore data
+  const tw = firestoreWeeklyStats[firestoreWeeklyStats.length - 1];
+  const lw = firestoreWeeklyStats[firestoreWeeklyStats.length - 2];
+  return { 
+    thisWeek: tw ? { sessions: tw.sessionsCompleted, totalMinutes: tw.timeSpentMins, accuracyAvg: Math.round((tw.accuracy || 0) * 100) } : null, 
+    lastWeek: lw ? { sessions: lw.sessionsCompleted, totalMinutes: lw.timeSpentMins, accuracyAvg: Math.round((lw.accuracy || 0) * 100) } : null, 
+    sessions: firestoreSessions, 
+    summary: null, 
+    hasData: firestoreSessions.length > 0 
+  };
 };
 
 // Learning highlights for AI summary (used for demo)
@@ -138,9 +150,15 @@ const PARENT_TIP = {
 // ═══════════════════════════════════════════════════════════════
 
 const Dashboard = ({ selectedChild, setSelectedChild, childrenList = [], onNavigate }) => {
-  const { isDemo } = useAuth();
+  const { isDemo, userProfile, user } = useAuth();
   const [showFullSummary, setShowFullSummary] = useState(false);
   const [dismissedBanner, setDismissedBanner] = useState(false);
+
+  // Firestore hooks for real users (demo uses lib/demoData.js)
+  const familyId = isDemo ? null : userProfile?.familyId;
+  const scholarId = isDemo ? null : selectedChild?.id;
+  const { sessions: firestoreSessions = [] } = useScholarSessions(familyId, scholarId, user?.email, 10);
+  const { weeklyStats: firestoreWeeklyStats = [] } = useScholarWeeklyStats(familyId, scholarId, user?.email, 8);
 
   // No scholars yet - show welcome state
   if (!selectedChild || childrenList.length === 0) {
@@ -158,7 +176,7 @@ const Dashboard = ({ selectedChild, setSelectedChild, childrenList = [], onNavig
   }
 
   // Get data based on mode (demo vs real)
-  const { thisWeek: THIS_WEEK, lastWeek: LAST_WEEK, sessions: RECENT_SESSIONS, summary, hasData } = getDataForChild(selectedChild, isDemo);
+  const { thisWeek: THIS_WEEK, lastWeek: LAST_WEEK, sessions: RECENT_SESSIONS, summary, hasData } = getDataForChild(selectedChild, isDemo, firestoreSessions, firestoreWeeklyStats);
 
   // No data yet - show empty state
   if (!hasData) {
