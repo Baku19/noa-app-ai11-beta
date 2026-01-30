@@ -8,7 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../config/firebase.js';
 import { useAuth } from '../../lib/AuthContext.jsx';
-import { cn } from "../../lib/utils.js";
+const cn = (...classes) => classes.filter(Boolean).join(' ');
 import { PenLine, Calendar, FileText, Eye, CheckCircle2, Clock } from "lucide-react";
 
 const genreColors = { NARRATIVE: 'bg-purple-100 text-purple-700', PERSUASIVE: 'bg-amber-100 text-amber-700', INFORMATIVE: 'bg-teal-100 text-teal-700', RECOUNT: 'bg-rose-100 text-rose-700' };

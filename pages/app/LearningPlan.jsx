@@ -9,7 +9,7 @@ import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../config/firebase.js';
 import { useAuth } from '../../lib/AuthContext.jsx';
 import { Link } from 'react-router-dom';
-import { cn } from "../../lib/utils.js";
+const cn = (...classes) => classes.filter(Boolean).join(' ');
 import { Clock, Target, Lightbulb, Play, CheckCircle2, BookOpen } from "lucide-react";
 
 export default function LearningPlan() {

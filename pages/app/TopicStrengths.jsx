@@ -8,8 +8,8 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase.js';
 import { useAuth } from '../../lib/AuthContext.jsx';
-import { cn } from "../../lib/utils.js";
-import { Filter, Search, TrendingUp, BookOpen, PenLine, Languages } from "lucide-react";
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+import { Search, TrendingUp } from 'lucide-react';
 
 const domains = [
   { value: 'all', label: 'All Domains' },
