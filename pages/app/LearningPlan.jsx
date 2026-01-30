@@ -1,251 +1,134 @@
-import React from 'react';
-import { Clock, Check, Info, Calendar, Timer, Lock, Crown, Brain } from 'lucide-react';
-import ChildDropdown from '../../components/app/ChildDropdown.jsx';
-import { WELCOME, SESSION, BASELINE } from '../../lib/copy.js';
+// ═══════════════════════════════════════════════════════════════
+// FILE: pages/app/LearningPlan.jsx
+// PURPOSE: Learning plan with today's sessions from Firestore
+// VERSION: 3.0 - Schema v7 compliant
+// ═══════════════════════════════════════════════════════════════
 
-// --- MOCK DATA ---
-const MOCK_CHILDREN = [
-  { id: '1', name: 'Emma', year_level: 5, avatar_color: 'bg-emerald-500', login_code: 'EMMA5K' },
-  { id: '2', name: 'Oliver', year_level: 3, avatar_color: 'bg-sky-500', login_code: 'OLIV3R' },
-];
+import React, { useState, useEffect } from 'react';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '../../config/firebase.js';
+import { useAuth } from '../../lib/AuthContext.jsx';
+import { Link } from 'react-router-dom';
+import { cn } from "../../lib/utils.js";
+import { Clock, Target, Lightbulb, Play, CheckCircle2, BookOpen } from "lucide-react";
 
-const MOCK_WHY_TOPICS = [
-    { topic: 'Word Problems', domain: 'Numeracy', reason: 'Needs Practice', color: 'bg-amber-100 text-amber-700' },
-    { topic: 'Vocabulary in Context', domain: 'Reading', reason: 'Continue Practice', color: 'bg-slate-100 text-slate-600' },
-    { topic: 'Descriptive Language', domain: 'Writing', reason: 'Introduce New Skill', color: 'bg-amber-100 text-amber-700' },
-]
+export default function LearningPlan() {
+  const { scholars, family } = useAuth();
+  const [selectedScholar, setSelectedScholar] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [topicProgress, setTopicProgress] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-const MOCK_COMING_UP = [
-    { 
-        domain: 'Numeracy', 
-        dotColor: 'bg-indigo-500', 
-        title: 'Building confidence with fractions', 
-        topics: ['Fractions', 'Mixed Numbers'], 
-        duration: 20, 
-        date: 'Jan 18' 
-    },
-    { 
-        domain: 'Reading', 
-        dotColor: 'bg-emerald-500', 
-        title: 'Strengthening reading comprehension', 
-        topics: ['Comprehension', 'Inference'], 
-        duration: 20, 
-        date: 'Jan 18' 
-    },
-]
+  useEffect(() => {
+    if (scholars.length > 0 && !selectedScholar) setSelectedScholar(scholars[0]);
+  }, [scholars, selectedScholar]);
 
-// --- LOCAL COMPONENTS ---
-const WhyTopicCard = ({ item }) => (
-    <div className="flex items-center justify-between py-3">
-        <div>
-            <p className="font-medium text-slate-700">{item.topic}</p>
-            <p className="text-sm text-slate-500">{item.domain}</p>
-        </div>
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${item.color}`}>
-            {item.reason}
-        </span>
-    </div>
-);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!family?.id || !selectedScholar?.id) { setSessions([]); setTopicProgress([]); return; }
+      setLoading(true);
+      try {
+        const sessionsRef = collection(db, 'families', family.id, 'sessions');
+        const sessionsQuery = query(sessionsRef, where('scholarId', '==', selectedScholar.id), where('status', '==', 'PLANNED'), orderBy('sessionDate', 'asc'));
+        const sessionsSnap = await getDocs(sessionsQuery);
+        setSessions(sessionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        const progressRef = collection(db, 'families', family.id, 'scholars', selectedScholar.id, 'topicProgress');
+        const progressSnap = await getDocs(query(progressRef));
+        setTopicProgress(progressSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (err) { console.error('Error fetching learning plan:', err); setSessions([]); setTopicProgress([]); }
+      finally { setLoading(false); }
+    };
+    fetchData();
+  }, [family?.id, selectedScholar?.id]);
 
-const ComingUpCard = ({ plan }) => (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <div className="flex justify-between items-start mb-3">
-            <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${plan.dotColor}`}></span>
-                <span className="font-semibold text-slate-700">{plan.domain}</span>
-            </div>
-            <span className="text-xs text-slate-500 border border-slate-200 px-2.5 py-1 rounded-full font-medium">Planned</span>
-        </div>
-        <h3 className="font-semibold text-slate-800 mb-3">{plan.title}</h3>
-        <div className="flex flex-wrap gap-2 mb-4">
-            {plan.topics.map(topic => (
-                <span key={topic} className="text-xs px-2.5 py-1 rounded bg-slate-100 text-slate-600 font-medium">{topic}</span>
-            ))}
-        </div>
-        <div className="flex items-center justify-between text-sm text-slate-500 pt-4 border-t border-slate-100">
-           <div className="flex items-center gap-2">
-                <Timer className="w-4 h-4" />
-                <span>{plan.duration} min</span>
-           </div>
-           <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                <span>{plan.date}</span>
-           </div>
-        </div>
-    </div>
-);
+  const today = new Date().toISOString().split('T')[0];
+  const todaySessions = sessions.filter(s => s.sessionDate === today);
+  const upcomingSessions = sessions.filter(s => s.sessionDate !== today).slice(0, 3);
+  const focusAreas = topicProgress.filter(t => t.strengthState === 'FOCUS_AREA' || t.strengthState === 'EMERGING_FOCUS').slice(0, 3);
 
-
-// --- MAIN LEARNING PLAN PAGE ---
-
-const LearningPlan = ({ selectedChild, setSelectedChild, onNavigate }) => {
-  // Mock subscription - will come from context/Firestore
-  const subscription = { plan: 'free' }; // Change to 'single' or 'family' to test
-  const isFreePlan = subscription.plan === 'free';
-
-  // Locked domains for free plan
-  const lockedDomains = ['reading', 'writing', 'grammar_punctuation'];
-  const isDomainLocked = (domain) => isFreePlan && lockedDomains.includes(domain.toLowerCase().replace(/ & /g, '_'));
+  const formatDate = (dateStr) => { if (!dateStr) return ''; return new Date(dateStr).toLocaleDateString('en-AU', { weekday: 'long', month: 'long', day: 'numeric' }); };
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-5xl mx-auto p-6 lg:p-8">
-        {/* Header Row */}
-        <header className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-slate-800">Learning Plan</h1>
-            <p className="text-slate-500 mt-1">Personalised sessions for {selectedChild.name}</p>
+            <h1 className="text-2xl lg:text-3xl font-semibold text-slate-800">Learning Plan</h1>
+            <p className="text-slate-500 mt-1">Personalised sessions for {selectedScholar?.name || 'your child'}</p>
           </div>
-          <div className="w-full sm:w-auto sm:min-w-[200px]">
-            <ChildDropdown children={MOCK_CHILDREN} selectedChild={selectedChild} onSelect={setSelectedChild} />
-          </div>
-        </header>
-
-        {isFreePlan && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Crown className="w-5 h-5 text-amber-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-amber-900">Free Plan - Numeracy Only</p>
-                <p className="text-sm text-amber-700 mt-0.5">
-                  Upgrade to access Reading, Writing, and Grammar & Punctuation domains.
-                </p>
-              </div>
-              <button className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-semibold rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
-                <Crown className="w-4 h-4" />
-                Upgrade Now
+          <div className="flex items-center gap-2">
+            {scholars.map(scholar => (
+              <button key={scholar.id} onClick={() => setSelectedScholar(scholar)} className={cn("flex items-center gap-2 px-4 py-2 rounded-xl transition-all", selectedScholar?.id === scholar.id ? "bg-white shadow-md border-2 border-indigo-500" : "bg-white/50 border border-slate-200 hover:bg-white")}>
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white font-semibold", scholar.avatarColor || "bg-indigo-500")}>{scholar.name?.charAt(0) || '?'}</div>
+                <span className="font-medium text-slate-700">{scholar.name}</span>
               </button>
-            </div>
+            ))}
           </div>
-        )}
-
-        {/* Baseline Explanation Banner */}
-        {selectedChild && !selectedChild.baselineComplete && (
-          <div className="mb-6 p-5 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200 rounded-xl">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Brain className="w-6 h-6 text-violet-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-violet-900 mb-1">Getting to Know {selectedChild.name}</h3>
-                <p className="text-violet-700 text-sm leading-relaxed">
-                  {BASELINE.HEADLINE(selectedChild.name)} Early patterns will settle as more learning happens.
-                </p>
-                <p className="text-violet-600 text-xs mt-2 flex items-center gap-1">
-                  <Info className="w-3.5 h-3.5" />
-                  This is guided learning — not a test.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Daily Recommendation Banner */}
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-xl p-5 text-white mb-8 flex items-center justify-between">
-            <div className='flex items-center gap-5'>
-                <Clock className="w-10 h-10 text-indigo-300 flex-shrink-0" />
-                <div>
-                    <p className="font-semibold text-indigo-100 text-sm">Daily Recommendation</p>
-                    <h2 className="text-2xl font-bold">~20 minutes of learning</h2>
-                    <p className="text-indigo-100 text-sm mt-1 max-w-sm">Short, focused sessions work best. We recommend completing 1-2 sessions per day.</p>
-                </div>
-            </div>
-            <div className="text-center flex-shrink-0 ml-4">
-                <p className="text-6xl font-bold">2</p>
-                <p className="text-indigo-100 font-medium">Sessions Ready</p>
-            </div>
         </div>
 
-        {/* Today's Learning Section */}
-        <section className="mb-8">
-            <div className="flex items-center gap-3 mb-4">
-                <span className="w-2.5 h-2.5 bg-indigo-500 rounded-full"></span>
-                <h2 className="text-lg font-bold text-slate-800">Today's Learning</h2>
-                <span className="text-slate-400 font-medium">Sunday, January 25</span>
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white mb-8">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2"><Clock className="w-5 h-5" /><span className="font-medium">Daily Recommendation</span></div>
+              <h2 className="text-2xl font-semibold mb-2">~20 minutes of learning</h2>
+              <p className="text-indigo-100 text-sm">Short, focused sessions work best. We recommend completing 1-2 sessions per day.</p>
             </div>
-            {/* All Done State */}
-            <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-8 h-8 text-emerald-500" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-800">{WELCOME.ALL_DONE.TITLE}</h3>
-                <p className="text-slate-500 mt-1">Great job, {selectedChild.name}! {WELCOME.ALL_DONE.SUBTITLE}</p>
-                <button
-                  onClick={() => onNavigate('topic_strengths')}
-                  className="text-sm text-violet-600 font-semibold mt-4 inline-block hover:text-violet-700">
-                    {WELCOME.ALL_DONE.CTA}
-                </button>
-            </div>
-        </section>
+            <div className="hidden sm:flex items-center gap-3"><div className="text-center"><p className="text-3xl font-bold">{sessions.length}</p><p className="text-xs text-indigo-100">Sessions Ready</p></div></div>
+          </div>
+        </div>
 
-        {/* Why These Sessions */}
-        <section className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-            <div className="flex items-center gap-3 mb-4">
-                <Info className="w-5 h-5 text-amber-500" />
-                <h3 className="font-semibold text-lg text-slate-800">Why These Sessions?</h3>
-            </div>
-            <div className="divide-y divide-slate-100">
-                {MOCK_WHY_TOPICS.map(item => (
-                    isDomainLocked(item.domain) ? (
-                        <div key={item.topic} className="relative">
-                           <div className="absolute inset-0 bg-white/90 backdrop-blur-[1px] rounded-xl z-10 flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
-                                <Lock className="w-5 h-5 text-slate-400 mb-1" />
-                                <p className="text-sm font-medium text-slate-600 capitalize">{item.domain}</p>
-                                <p className="text-xs text-slate-400 mb-2">Free plan: Numeracy only</p>
-                                <button className="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-semibold rounded-lg flex items-center gap-1">
-                                    <Crown className="w-3 h-3" />
-                                    Upgrade to unlock
-                                </button>
-                            </div>
-                            <div className="opacity-40 pointer-events-none">
-                                <WhyTopicCard item={item} />
-                            </div>
-                        </div>
-                    ) : (
-                        <WhyTopicCard key={item.topic} item={item} />
-                    )
-                ))}
-            </div>
-            <p className="text-xs text-slate-400 mt-4 pt-4 border-t border-slate-100">
-                Sessions are personalised based on {selectedChild.name}'s performance, targeting areas that need practice while building on strengths.
-            </p>
-        </section>
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center"><Target className="w-5 h-5 text-amber-600" /></div>
+            <div><h2 className="text-lg font-semibold text-slate-800">Today's Learning</h2><p className="text-sm text-slate-500">{formatDate(today)}</p></div>
+          </div>
+          {loading ? (<div className="grid md:grid-cols-2 gap-4"><div className="h-44 rounded-2xl bg-slate-200 animate-pulse" /><div className="h-44 rounded-2xl bg-slate-200 animate-pulse" /></div>
+          ) : todaySessions.length > 0 ? (<div className="grid md:grid-cols-2 gap-4">{todaySessions.map((session, index) => (<TodaySessionCard key={session.id} session={session} isPrimary={index === 0} />))}</div>
+          ) : sessions.length > 0 ? (<div className="bg-white rounded-2xl border border-slate-200 p-8 text-center"><CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-4" /><h3 className="font-semibold text-slate-800 mb-2">All done for today!</h3><p className="text-slate-500 text-sm">Great job! Check back tomorrow for new sessions.</p></div>
+          ) : (<div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center"><BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" /><h3 className="font-semibold text-slate-800 mb-2">Sessions Coming Soon</h3><p className="text-slate-500 text-sm max-w-md mx-auto">Learning sessions will be automatically planned based on {selectedScholar?.name || "your child"}'s progress and learning needs.</p></div>)}
+        </div>
 
-        {/* Coming Up Section */}
-        <section>
-            <h2 className="text-xl font-bold text-slate-800 mb-4">Coming Up</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-                {MOCK_COMING_UP.map(plan => (
-                     isDomainLocked(plan.domain) ? (
-                        <div key={plan.title} className="relative">
-                            <div className="absolute inset-0 bg-white/90 backdrop-blur-[1px] rounded-xl z-10 flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
-                                <Lock className="w-5 h-5 text-slate-400 mb-1" />
-                                <p className="text-sm font-medium text-slate-600 capitalize">{plan.domain}</p>
-                                <p className="text-xs text-slate-400 mb-2">Free plan: Numeracy only</p>
-                                <button className="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-semibold rounded-lg flex items-center gap-1">
-                                    <Crown className="w-3 h-3" />
-                                    Upgrade to unlock
-                                </button>
-                            </div>
-                            <div className="opacity-40 pointer-events-none">
-                                <ComingUpCard plan={plan} />
-                            </div>
-                        </div>
-                     ) : (
-                        <ComingUpCard key={plan.title} plan={plan} />
-                     )
-                ))}
-            </div>
-            <p className="text-center text-xs text-slate-400 mt-4">
-              {SESSION.JUSTIFICATION}
-            </p>
-        </section>
+        {focusAreas.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-10">
+            <div className="flex items-center gap-2 mb-4"><Lightbulb className="w-5 h-5 text-amber-500" /><h3 className="font-semibold text-slate-800">Why These Sessions?</h3></div>
+            <div className="space-y-3">{focusAreas.map(topic => (<div key={topic.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50"><div><p className="font-medium text-slate-800">{topic.topic}</p><p className="text-xs text-slate-500">{topic.skillTag}</p></div><span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", topic.strengthState === 'FOCUS_AREA' ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600")}>Working On</span></div>))}</div>
+            <p className="text-xs text-slate-400 mt-4">Sessions are tailored based on your child's progress and learning patterns.</p>
+          </div>
+        )}
 
+        {upcomingSessions.length > 0 && (<div><h2 className="text-lg font-semibold text-slate-800 mb-4">Coming Up</h2><div className="grid md:grid-cols-3 gap-4">{upcomingSessions.map(session => (<SessionCard key={session.id} session={session} />))}</div></div>)}
       </div>
     </div>
   );
-};
+}
 
-export default LearningPlan;
+function TodaySessionCard({ session, isPrimary }) {
+  const domainColors = { NUMERACY: 'from-indigo-500 to-indigo-600', READING: 'from-teal-500 to-teal-600', WRITING: 'from-amber-500 to-amber-600', CONVENTIONS: 'from-rose-500 to-rose-600' };
+  const domainNames = { NUMERACY: 'Numeracy', READING: 'Reading', WRITING: 'Writing', CONVENTIONS: 'Conventions' };
+  return (
+    <div className={cn("rounded-2xl p-6 relative overflow-hidden", isPrimary ? `bg-gradient-to-br ${domainColors[session.domain] || 'from-slate-600 to-slate-700'} text-white` : "bg-white border border-slate-200")}>
+      {isPrimary && <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />}
+      <div className="relative">
+        <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", isPrimary ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600")}>{domainNames[session.domain] || session.domain}</span>
+        <h3 className={cn("text-xl font-semibold mt-4 mb-2", isPrimary ? "text-white" : "text-slate-800")}>{session.learningIntent || 'Practice Session'}</h3>
+        {session.targetSkillTags?.length > 0 && (<div className="flex flex-wrap gap-2 mb-4">{session.targetSkillTags.slice(0, 2).map((skill, i) => (<span key={i} className={cn("text-xs px-2 py-1 rounded", isPrimary ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600")}>{skill}</span>))}</div>)}
+        <div className={cn("flex items-center justify-between mt-4", isPrimary ? "text-white/80" : "text-slate-500")}>
+          <div className="flex items-center gap-1.5 text-sm"><Clock className="w-4 h-4" /><span>{session.plannedDurationMinutes || 20} min</span></div>
+          <Link to={`/session/${session.id}`}><button className={cn("flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors", isPrimary ? "bg-white text-slate-800 hover:bg-white/90" : "bg-indigo-600 text-white hover:bg-indigo-700")}><Play className="w-4 h-4" />Start</button></Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SessionCard({ session }) {
+  const domainNames = { NUMERACY: 'Numeracy', READING: 'Reading', WRITING: 'Writing', CONVENTIONS: 'Conventions' };
+  const formatDate = (dateStr) => { if (!dateStr) return ''; return new Date(dateStr).toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' }); };
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-sm transition-shadow">
+      <span className="text-xs font-medium text-slate-500">{formatDate(session.sessionDate)}</span>
+      <h4 className="font-medium text-slate-800 mt-2 mb-1">{session.learningIntent || domainNames[session.domain] || 'Practice'}</h4>
+      <div className="flex items-center gap-2 text-xs text-slate-400"><Clock className="w-3 h-3" /><span>{session.plannedDurationMinutes || 20} min</span></div>
+    </div>
+  );
+}
