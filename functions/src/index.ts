@@ -251,21 +251,55 @@ export const generateScholarCode = onCall(
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be logged in");
     }
-
-    const {familyId, scholarId} = request.data;
-
+    
+    const uid = request.auth.uid;
+    const {scholarData} = request.data;
+    
+    if (!scholarData || !scholarData.name || !scholarData.yearLevel) {
+      throw new HttpsError("invalid-argument", "Missing required scholar data");
+    }
+    
+    // Get user familyId
+    const userDoc = await db.collection("users").doc(uid).get();
+    if (!userDoc.exists) {
+      throw new HttpsError("not-found", "User profile not found");
+    }
+    const familyId = userDoc.data()?.familyId;
+    if (!familyId) {
+      throw new HttpsError("failed-precondition", "No family associated with user");
+    }
+    
+    // Create scholar document
+    const scholarRef = db.collection("families").doc(familyId).collection("scholars").doc();
+    const scholarId = scholarRef.id;
+    
+    await scholarRef.set({
+      name: scholarData.name,
+      dateOfBirth: scholarData.dateOfBirth || null,
+      yearLevel: scholarData.yearLevel,
+      school: scholarData.school || null,
+      schoolData: scholarData.schoolData || null,
+      avatarColor: scholarData.avatarColor || "bg-emerald-500",
+      settings: scholarData.settings || {
+        dailySessionMinutes: 20,
+        notificationsEnabled: true
+      },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: uid
+    });
+    
+    // Generate login code
     const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     let code = "";
     for (let i = 0; i < 6; i++) {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-
     const codeHash = await bcrypt.hash(code, 12);
     const lookupKey = crypto
       .createHmac("sha256", "noa-scholar-code")
       .update(code)
       .digest("hex");
-
+    
     await db.collection("inviteCodes").doc(lookupKey).set({
       type: "SCHOLAR_LOGIN",
       codeHash,
@@ -274,11 +308,21 @@ export const generateScholarCode = onCall(
       status: "ACTIVE",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-
-    return {code};
+    
+    // Update scholar with hasLoginCode flag
+    await scholarRef.update({
+      hasLoginCode: true
+    });
+    
+    return {
+      success: true,
+      code,
+      loginCode: code,
+      scholarId,
+      scholarName: scholarData.name
+    };
   }
 );
-
 export const validateScholarCode = onCall(
   {region: REGION},
   async (request) => {
