@@ -78,7 +78,7 @@ const AddScholarModal = ({ onClose, onSave, scholarsUsed, scholarsLimit, plan })
         scholarName: scholarData.name,
         loginCode: 'DEMO01'
       });
-      onSave({ ...scholarData, loginCode: 'DEMO01' });
+      // onSave({ ...scholarData, loginCode: 'DEMO01' });
       return;
     }
 
@@ -93,7 +93,7 @@ const AddScholarModal = ({ onClose, onSave, scholarsUsed, scholarsLimit, plan })
           scholarId: result.data.scholarId
         });
         await refreshScholars();
-        onSave({ ...scholarData, loginCode: result.data.loginCode });
+        // onSave({ ...scholarData, loginCode: result.data.loginCode });
       } else {
         setErrors({ submit: result.data.error || 'Failed to add scholar' });
       }
@@ -143,7 +143,7 @@ const AddScholarModal = ({ onClose, onSave, scholarsUsed, scholarsLimit, plan })
           </div>
 
           <button
-            onClick={onClose}
+            onClick={() => { onSave(success); onClose(); }}
             className="w-full px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
           >
             Done
