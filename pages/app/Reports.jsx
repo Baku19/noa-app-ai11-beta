@@ -80,14 +80,14 @@ const MOCK_SESSIONS = [
 ];
 
 const MOCK_TOPICS = [
-  { topic: 'Fractions', domain: 'Numeracy', strength_state: 'strength', sessions: 5 },
-  { topic: 'Main Ideas', domain: 'Reading', strength_state: 'strength', sessions: 3 },
-  { topic: 'Persuasive Writing', domain: 'Writing', strength_state: 'strength', sessions: 4 },
-  { topic: '2D Shapes', domain: 'Numeracy', strength_state: 'emerging_strength', sessions: 2 },
-  { topic: 'Inference', domain: 'Reading', strength_state: 'emerging_strength', sessions: 4 },
-  { topic: 'Word Problems', domain: 'Numeracy', strength_state: 'focus_area', sessions: 6 },
-  { topic: 'Author\'s Purpose', domain: 'Reading', strength_state: 'focus_area', sessions: 3 },
-  { topic: 'Figurative Language', domain: 'Writing', strength_state: 'emerging_focus', sessions: 1 },
+  { topic: 'Fractions', domain: 'Numeracy', strengthState: 'strength', sessions: 5 },
+  { topic: 'Main Ideas', domain: 'Reading', strengthState: 'strength', sessions: 3 },
+  { topic: 'Persuasive Writing', domain: 'Writing', strengthState: 'strength', sessions: 4 },
+  { topic: '2D Shapes', domain: 'Numeracy', strengthState: 'emerging_strength', sessions: 2 },
+  { topic: 'Inference', domain: 'Reading', strengthState: 'emerging_strength', sessions: 4 },
+  { topic: 'Word Problems', domain: 'Numeracy', strengthState: 'focus_area', sessions: 6 },
+  { topic: 'Author\'s Purpose', domain: 'Reading', strengthState: 'focus_area', sessions: 3 },
+  { topic: 'Figurative Language', domain: 'Writing', strengthState: 'emerging_focus', sessions: 1 },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -268,10 +268,10 @@ const Reports = ({ selectedChild, setSelectedChild, childrenList = [] }) => {
   const practiceStreak = 4;
 
   const stats = {
-    strengths: MOCK_TOPICS.filter(t => t.strength_state === 'strength').length,
-    emergingStrengths: MOCK_TOPICS.filter(t => t.strength_state === 'emerging_strength').length,
-    focusAreas: MOCK_TOPICS.filter(t => t.strength_state === 'focus_area').length,
-    emergingFocus: MOCK_TOPICS.filter(t => t.strength_state === 'emerging_focus').length,
+    strengths: MOCK_TOPICS.filter(t => t.strengthState === 'strength').length,
+    emergingStrengths: MOCK_TOPICS.filter(t => t.strengthState === 'emerging_strength').length,
+    focusAreas: MOCK_TOPICS.filter(t => t.strengthState === 'focus_area').length,
+    emergingFocus: MOCK_TOPICS.filter(t => t.strengthState === 'emerging_focus').length,
     totalTopics: MOCK_TOPICS.length
   };
 
@@ -488,11 +488,11 @@ const Reports = ({ selectedChild, setSelectedChild, childrenList = [] }) => {
             </h4>
             
             <div className="space-y-4">
-              {MOCK_TOPICS.filter(t => t.strength_state === 'strength' || t.strength_state === 'emerging_strength').slice(0, 4).map((topic, i) => (
+              {MOCK_TOPICS.filter(t => t.strengthState === 'strength' || t.strengthState === 'emerging_strength').slice(0, 4).map((topic, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className={cn(
                     "w-2 h-2 rounded-full mt-2",
-                    topic.strength_state === 'strength' ? 'bg-emerald-500' : 'bg-sky-500'
+                    topic.strengthState === 'strength' ? 'bg-emerald-500' : 'bg-sky-500'
                   )} />
                   <div>
                     <p className="font-medium text-slate-800">{topic.topic}</p>
@@ -515,7 +515,7 @@ const Reports = ({ selectedChild, setSelectedChild, childrenList = [] }) => {
             </h4>
             
             <div className="space-y-3 mb-4">
-              {MOCK_TOPICS.filter(t => t.strength_state === 'focus_area').map((topic, i) => (
+              {MOCK_TOPICS.filter(t => t.strengthState === 'focus_area').map((topic, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-amber-400 rounded-full mt-2" />
                   <div>
