@@ -9,6 +9,7 @@ import { evaluateResponse } from "./ai/services/evaluationService";
 import { generateHint, getStaticHint } from "./ai/services/hintService";
 import { runPostSessionDiagnostics } from "./ai/services/diagnosticService";
 import { getQuestionWithAnswer } from "./db/questionBank.repo";
+import { syncTopicProgress, syncWeeklyStats, syncConfidenceTracking } from "./ai/services/dataSyncService";
 
 const db = admin.firestore();
 
@@ -59,6 +60,7 @@ export const submitResponse = onCall(
       questionId,
       scholarAnswer,
       isCorrect,
+      microSkillId: question.public.microSkillId,
       confidenceRating: confidenceRating || null,
       timeMs: timeMs || null,
       attemptNumber,
@@ -143,6 +145,8 @@ export const finaliseSessionAI = onCall(
     }
 
     const sessionRef = db.collection("families").doc(familyId).collection("sessions").doc(sessionId);
+    const sessionDoc = await sessionRef.get();
+    const sessionData = sessionDoc.data();
     const responsesSnap = await sessionRef.collection("responses").get();
 
     const sessionResponses: Array<{
@@ -154,6 +158,10 @@ export const finaliseSessionAI = onCall(
 
     let correct = 0;
     let total = 0;
+    let totalTimeMs = 0;
+    const topicsPracticed: string[] = [];
+    const skillTagMap: Record<string, { topic: string; domain: string }> = {};
+    let lastCalibrationStatus = "CALIBRATED";
 
     for (const doc of responsesSnap.docs) {
       const resp = doc.data();
@@ -167,6 +175,17 @@ export const finaliseSessionAI = onCall(
         });
         if (resp.isCorrect) correct++;
         total++;
+        totalTimeMs += resp.timeMs || 0;
+
+        const topic = question.public.microSkillId;
+        if (!topicsPracticed.includes(topic)) {
+          topicsPracticed.push(topic);
+        }
+        skillTagMap[topic] = { topic, domain: question.public.domain };
+
+        if (resp.calibrationStatus) {
+          lastCalibrationStatus = resp.calibrationStatus;
+        }
       }
     }
 
@@ -196,6 +215,32 @@ export const finaliseSessionAI = onCall(
     }
 
     const accuracyRate = total > 0 ? correct / total : 0;
+    const domain = sessionData?.domain || "numeracy";
+    const durationMinutes = Math.round(totalTimeMs / 60000);
+
+    // Sync to UI-expected collections
+    try {
+      if (diagnostics?.masteryProbabilities) {
+        await syncTopicProgress(familyId, scholarId, diagnostics.masteryProbabilities, skillTagMap);
+      }
+
+      await syncWeeklyStats(familyId, scholarId, {
+        domain,
+        durationMinutes: durationMinutes || 15,
+        accuracy: accuracyRate,
+        topicsPracticed,
+      });
+
+      await syncConfidenceTracking(
+        familyId,
+        scholarId,
+        domain,
+        lastCalibrationStatus,
+        diagnostics?.trend || "NEUTRAL"
+      );
+    } catch (syncError) {
+      console.error("Data sync failed:", syncError);
+    }
 
     await sessionRef.update({
       status: "COMPLETED",
@@ -203,6 +248,7 @@ export const finaliseSessionAI = onCall(
       accuracyRate,
       totalQuestions: total,
       correctAnswers: correct,
+      durationMinutes,
       diagnostics: diagnostics ? {
         masteryProbabilities: diagnostics.masteryProbabilities,
         gapMap: diagnostics.gapMap,

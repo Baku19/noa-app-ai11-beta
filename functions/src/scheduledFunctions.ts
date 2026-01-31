@@ -8,6 +8,7 @@ import { REGION } from "./config/models";
 import { runInventoryScan } from "./ai/jobs/inventoryScan.job";
 import { runCohortSignalsJob } from "./ai/jobs/cohortSignals.job";
 import { generateParentInsight, getStaticInsight } from "./ai/services/insightsService";
+import { syncParentInsight } from "./ai/services/dataSyncService";
 import * as admin from "firebase-admin";
 
 const db = admin.firestore();
@@ -113,6 +114,7 @@ export const getParentInsight = onCall(
       insight = getStaticInsight(scholar.displayName || "Your child", sessionsCompleted);
     }
 
+    await syncParentInsight(familyId, scholarId, insight);
     return insight;
   }
 );
