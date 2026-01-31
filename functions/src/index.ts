@@ -657,3 +657,7 @@ export const getHint = onCall(
 // AI-powered session functions (Batch 7)
 export { submitResponse, getAIHint, finaliseSessionAI } from "./sessionFunctions";
 
+
+// AI-powered orchestration functions (Batch 7)
+export { createAISession, triggerGeneration } from "./orchestrationFunctions";
+

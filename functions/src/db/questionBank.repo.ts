@@ -1,9 +1,6 @@
-// ═══════════════════════════════════════════════════════════════
 // FILE: db/questionBank.repo.ts
 // PURPOSE: Question bank queries with serving rules enforced
 // CRITICAL: Only SEED or AI_APPROVED items can be served
-// BATCH 7
-// ═══════════════════════════════════════════════════════════════
 
 import * as admin from "firebase-admin";
 import {
@@ -12,21 +9,13 @@ import {
   QaStatus,
   SERVEABLE_STATUSES,
   Difficulty,
-
+  Domain,
 } from "../shared/types";
 
 const db = admin.firestore();
 const PUBLIC_COLLECTION = "questionBankPublic";
 const PRIVATE_COLLECTION = "questionBankPrivate";
 
-// ═══════════════════════════════════════════════════════════════
-// SERVING QUERIES (LOCKED: Only SEED or AI_APPROVED)
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Get serveable questions - ONLY SEED or AI_APPROVED
- * LOCKED: Never modify the qaStatus filter
- */
 export async function getServeableQuestions(
   microSkillId: string,
   difficulty: Difficulty,
@@ -53,6 +42,34 @@ export async function getServeableQuestions(
   return items.slice(0, limit);
 }
 
+export async function getServeableQuestionsByDomain(
+  domain: Domain,
+  yearLevel: number,
+  difficulty: Difficulty,
+  limit: number = 10,
+  excludeItemIds: string[] = []
+): Promise<QuestionItemPublic[]> {
+  const query = db.collection(PUBLIC_COLLECTION)
+    .where("domain", "==", domain)
+    .where("difficultyBand", "==", difficulty)
+    .where("qaStatus", "in", SERVEABLE_STATUSES)
+    .where("isActive", "==", true)
+    .where("yearMin", "<=", yearLevel)
+    .limit(limit + excludeItemIds.length);
+
+  const snapshot = await query.get();
+  const items: QuestionItemPublic[] = [];
+
+  snapshot.forEach((doc) => {
+    const data = doc.data() as QuestionItemPublic;
+    if (!excludeItemIds.includes(data.itemId) && data.yearMax >= yearLevel) {
+      items.push(data);
+    }
+  });
+
+  return items.slice(0, limit);
+}
+
 export async function countServeableItems(
   microSkillId: string,
   difficulty: Difficulty
@@ -67,10 +84,6 @@ export async function countServeableItems(
 
   return snapshot.data().count;
 }
-
-// ═══════════════════════════════════════════════════════════════
-// WRITE OPERATIONS
-// ═══════════════════════════════════════════════════════════════
 
 export async function saveDraftQuestions(
   publicItems: Omit<QuestionItemPublic, "qaStatus" | "createdAt">[],
@@ -115,29 +128,6 @@ export async function approveQuestions(
 
   await batch.commit();
 }
-
-export async function rejectQuestions(
-  itemIds: string[],
-  reasons: string[]
-): Promise<void> {
-  const batch = db.batch();
-  const now = admin.firestore.FieldValue.serverTimestamp();
-
-  for (const itemId of itemIds) {
-    const ref = db.collection(PUBLIC_COLLECTION).doc(itemId);
-    batch.update(ref, {
-      qaStatus: "REJECTED" as QaStatus,
-      rejectionReasons: reasons,
-      rejectedAt: now,
-    });
-  }
-
-  await batch.commit();
-}
-
-// ═══════════════════════════════════════════════════════════════
-// READ OPERATIONS
-// ═══════════════════════════════════════════════════════════════
 
 export async function getQuestionPublic(
   itemId: string
