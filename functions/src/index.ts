@@ -661,3 +661,7 @@ export { submitResponse, getAIHint, finaliseSessionAI } from "./sessionFunctions
 // AI-powered orchestration functions (Batch 7)
 export { createAISession, triggerGeneration } from "./orchestrationFunctions";
 
+
+// Scheduled jobs and parent insights (Batch 7)
+export { dailyInventoryScan, dailyCohortSignals, getParentInsight, manualInventoryScan } from "./scheduledFunctions";
+
