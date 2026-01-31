@@ -89,8 +89,8 @@ const Hero = ({ onNavigate }) => {
               </div>
               <div className="grid grid-cols-4 gap-4 text-center my-6">
                 <div><p className="text-2xl font-bold text-slate-800">3</p><p className="text-xs text-slate-500">Strengths</p></div>
-                <div><p className="text-2xl font-bold text-slate-800">3</p><p className="text-xs text-slate-500">Emerging</p></div>
-                <div><p className="text-2xl font-bold text-slate-800">2</p><p className="text-xs text-slate-500">Focus</p></div>
+                <div><p className="text-2xl font-bold text-slate-800">3</p><p className="text-xs text-slate-500">Getting Stronger</p></div>
+                <div><p className="text-2xl font-bold text-slate-800">2</p><p className="text-xs text-slate-500">Working On</p></div>
                 <div><p className="text-2xl font-bold text-slate-800">12</p><p className="text-xs text-slate-500">Sessions</p></div>
               </div>
               <div className="space-y-4">
@@ -99,7 +99,7 @@ const Hero = ({ onNavigate }) => {
                   <p className="text-sm text-slate-600 mt-1">Emma is consistently scoring above 90% in identifying and comparing fractions.</p>
                 </div>
                 <div className="p-4 rounded-lg bg-slate-50/70 border-l-4 border-amber-500">
-                  <p className="font-semibold text-sm text-slate-800">Emerging: Geometry</p>
+                  <p className="font-semibold text-sm text-slate-800">Getting Stronger: Geometry</p>
                   <p className="text-sm text-slate-600 mt-1">Let's work on 2D shapes and their properties. Suggest starting a new lesson.</p>
                 </div>
               </div>

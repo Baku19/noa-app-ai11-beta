@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, TrendingUp, Settings2 } from 'lucide-react';
+import { Sparkles, TrendingUp, Settings2, Eye } from 'lucide-react';
 import { STRENGTH_LABELS, CATEGORY_STYLES, NAV, EMPTY_STATE } from '../../lib/copy.js';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -8,6 +8,7 @@ const ICONS = {
   strength: Sparkles,
   emerging_strength: TrendingUp,
   focus_area: Settings2
+  emerging_focus: Eye
 };
 
 const CategoryPill = ({ category, count }) => {
@@ -52,6 +53,7 @@ const InsightSummaryBar = ({ counts, isLoading, className }) => {
     { key: 'strength', count: counts?.strength || 0 },
     { key: 'emerging_strength', count: counts?.emerging_strength || 0 },
     { key: 'focus_area', count: counts?.focus_area || 0 }
+    { key: 'emerging_focus', count: counts?.emerging_focus || 0 }
   ].filter(c => c.count > 0);
 
   const total = categories.reduce((sum, cat) => sum + cat.count, 0);

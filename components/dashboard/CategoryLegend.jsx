@@ -10,7 +10,7 @@ const explanations = {
 };
 
 const CategoryLegend = ({ className }) => {
-  const categories = ['strength', 'emerging_strength', 'focus_area'];
+  const categories = ['strength', 'emerging_strength', 'focus_area', 'emerging_focus'];
 
   return (
     <div className={cn("bg-white rounded-xl p-4 shadow-sm", className)}>
