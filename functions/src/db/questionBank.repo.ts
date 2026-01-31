@@ -12,7 +12,7 @@ import {
   QaStatus,
   SERVEABLE_STATUSES,
   Difficulty,
-  Domain,
+
 } from "../shared/types";
 
 const db = admin.firestore();
