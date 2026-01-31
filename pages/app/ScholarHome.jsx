@@ -17,7 +17,7 @@ import {
   Play,
   Sparkles,
   ChevronRight,
-  Zap
+  Zap,
   CheckCircle
 } from 'lucide-react';
 import { 

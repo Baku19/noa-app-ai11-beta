@@ -54,11 +54,11 @@ const MOCK_SESSION_RESULT = {
 // ═══════════════════════════════════════════════════════════════
 
 const SessionComplete = ({ 
-const { isDemo } = useAuth();
   session = MOCK_SESSION_RESULT, 
   onComplete,
   onStartBonus 
 }) => {
+const { isDemo } = useAuth();
   const [showContent, setShowContent] = useState(false);
   const [showEffort, setShowEffort] = useState(false);
   const [showBonus, setShowBonus] = useState(false);

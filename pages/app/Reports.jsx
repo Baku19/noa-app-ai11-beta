@@ -4,6 +4,7 @@
 // NOW: Connected to real data with empty states
 // ═══════════════════════════════════════════════════════════════
 
+import { useAuth } from '../../lib/AuthContext.jsx';
 import React, { useState } from 'react';
 import { 
   TrendingUp, 
@@ -30,7 +31,6 @@ import {
   LayoutDashboard,
   Users
 } from "lucide-react";
-import { useAuth } from '../../lib/AuthContext.jsx';
 import ChildDropdown from '../../components/app/ChildDropdown.jsx';
 
 // ═══════════════════════════════════════════════════════════════
