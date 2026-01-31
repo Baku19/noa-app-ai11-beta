@@ -12,7 +12,7 @@ export interface TopicProgressEntry {
   domain: string;
   strengthState: "strength" | "emerging_strength" | "focus_area" | "emerging_focus";
   sessionsCount: number;
-  trend: "improving" | "stable" | "declining" | null;
+  trend: "improving" | "stable" | null;
 }
 
 export interface WeeklyStats {
@@ -46,7 +46,7 @@ function masteryToStrengthState(mastery: number): TopicProgressEntry["strengthSt
 function computeTrend(current: number, previous: number | undefined): TopicProgressEntry["trend"] {
   if (previous === undefined) return null;
   if (current > previous + 0.05) return "improving";
-  if (current < previous - 0.05) return "declining";
+  if (current < previous - 0.05) return null ;
   return "stable";
 }
 
