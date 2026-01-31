@@ -17,11 +17,13 @@ import Settings from './pages/app/Settings.jsx';
 import Reports from './pages/app/Reports.jsx';
 import ConfidenceTracking from './pages/app/ConfidenceTracking.jsx';
 import Writing from './pages/app/Writing.jsx'; // Parent view
+import QuestionReview from './pages/app/QuestionReview.jsx';
 
 // Scholar pages - Radically calm
 import ScholarHome from './pages/app/ScholarHome.jsx';
 import ScholarWriting from './pages/app/ScholarWriting.jsx'; // Scholar view
 import SessionComplete from './pages/app/SessionComplete.jsx';
+import ChildSession from './pages/app/ChildSession.jsx';
 import FirstSessionWelcome from './pages/app/FirstSessionWelcome.jsx';
 
 // Legacy (keeping for transition)
@@ -133,7 +135,7 @@ const App = ({ onNavigate, userType, setUserType, selectedScholar }) => {
 
   // Handle session start (scholar)
   const handleStartSession = () => {
-    setActiveScreen('session_complete');
+    setActiveScreen('child_session');
   };
 
   // Handle bonus session start
@@ -216,6 +218,17 @@ const App = ({ onNavigate, userType, setUserType, selectedScholar }) => {
             onStartSession={handleStartSession} 
           />
         );
+      case 'child_session':
+        return (
+          <ChildSession
+            scholar={scholar}
+            onComplete={(result) => {
+              setActiveScreen('session_complete');
+            }}
+            onExit={() => setActiveScreen('scholar_home')}
+          />
+        );
+
       case 'session_complete':
         return (
           <SessionComplete 
@@ -260,7 +273,15 @@ const App = ({ onNavigate, userType, setUserType, selectedScholar }) => {
             childrenList={childrenList}
           />
         );
-
+      
+     case 'question_review':
+        return (
+          <QuestionReview
+            selectedChild={selectedChild}
+            setSelectedChild={setSelectedChild}
+            childrenList={childrenList}
+          />
+        );
       // ═══════════════════════════════════════════════════════════════
       // LEGACY
       // ═══════════════════════════════════════════════════════════════
@@ -282,7 +303,7 @@ const App = ({ onNavigate, userType, setUserType, selectedScholar }) => {
   };
 
   // Full-screen experiences (no sidebar)
-  const fullScreenPages = ['session_complete', 'first_session_welcome'];
+const fullScreenPages = ['session_complete', 'first_session_welcome', 'child_session'];
   if (fullScreenPages.includes(activeScreen)) {
     return (
       <div className="font-sans antialiased">

@@ -16,7 +16,8 @@ import {
   GraduationCap,
   FileText,
   Heart,
-  Sparkles
+  Sparkles,
+  Search
 } from 'lucide-react';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -28,6 +29,7 @@ const parentNavItems = [
   { id: 'topic_strengths', icon: BarChart3, label: 'Topic Strengths' },
   { id: 'confidence', icon: Heart, label: 'Confidence Tracking' },
   { id: 'writing_review', icon: PenLine, label: 'Writing Review' },
+  { id: 'question_review', icon: Search, label: 'Question Review' },
   { id: 'settings', icon: Settings, label: 'Settings' },
 ];
 
