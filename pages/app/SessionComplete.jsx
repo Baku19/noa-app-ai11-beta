@@ -15,6 +15,7 @@
 //
 // ═══════════════════════════════════════════════════════════════
 
+import { useAuth } from '../../lib/AuthContext.jsx';
 import React, { useEffect, useState } from 'react';
 import { 
   Check,
@@ -53,6 +54,7 @@ const MOCK_SESSION_RESULT = {
 // ═══════════════════════════════════════════════════════════════
 
 const SessionComplete = ({ 
+const { isDemo } = useAuth();
   session = MOCK_SESSION_RESULT, 
   onComplete,
   onStartBonus 

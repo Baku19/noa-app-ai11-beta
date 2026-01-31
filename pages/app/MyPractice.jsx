@@ -15,6 +15,7 @@
 //
 // ═══════════════════════════════════════════════════════════════
 
+import { useAuth } from '../../lib/AuthContext.jsx';
 import React from 'react';
 import { 
   BookOpen,
@@ -127,6 +128,7 @@ const domainConfig = {
 // ═══════════════════════════════════════════════════════════════
 
 const MyPractice = ({ scholar = MOCK_SCHOLAR, sessions = MOCK_SESSIONS }) => {
+  const { isDemo } = useAuth();
   const ageBand = getAgeBand(scholar.yearLevel);
   const language = getPracticeLanguage(ageBand);
   

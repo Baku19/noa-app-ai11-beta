@@ -11,12 +11,14 @@
 //
 // ═══════════════════════════════════════════════════════════════
 
+import { useAuth } from '../../lib/AuthContext.jsx';
 import React, { useState, useEffect } from 'react';
 import { 
   Play,
   Sparkles,
   ChevronRight,
   Zap
+  CheckCircle
 } from 'lucide-react';
 import { 
   getAgeBand, 
@@ -43,11 +45,42 @@ const MOCK_SCHOLAR = {
   sessionReady: true,
 };
 
+
+// ═══════════════════════════════════════════════════════════════
+// ALL DONE STATE - When no session is ready
+// ═══════════════════════════════════════════════════════════════
+const AllDoneState = ({ ageBand, onViewProgress }) => {
+  const copy = {
+    early: { headline: "Great work today! 🌟", subtext: "You've done all your practice.", button: "See what I learned" },
+    middle: { headline: "All done for today!", subtext: "Your next session will be ready tomorrow.", button: "View my progress" },
+    transition: { headline: "Session complete", subtext: "Come back tomorrow for more practice.", button: "View progress" },
+    senior: { headline: "Done for today", subtext: "Next session available tomorrow.", button: "View progress" }
+  };
+  const c = copy[ageBand] || copy.middle;
+  
+  return (
+    <div className="w-full max-w-sm">
+      <div className="rounded-3xl p-8 text-center bg-white border-2 border-emerald-100">
+        <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30">
+          <CheckCircle className="w-8 h-8 text-white" />
+        </div>
+        <h2 className={cn("font-bold text-slate-800 mb-2", ageBand === 'early' ? "text-2xl" : "text-xl")}>{c.headline}</h2>
+        <p className={cn("text-slate-500 mb-6", ageBand === 'early' ? "text-base" : "text-sm")}>{c.subtext}</p>
+        {onViewProgress && (
+          <button onClick={onViewProgress} className="px-6 py-3 rounded-xl font-medium transition-all bg-slate-100 text-slate-700 hover:bg-slate-200">{c.button}</button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
-const ScholarHome = ({ scholar = MOCK_SCHOLAR, onStartSession }) => {
+const ScholarHome = ({ scholar = MOCK_SCHOLAR, onStartSession, onViewProgress }) => {
+const { isDemo } = useAuth();
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   
   // Determine age band for language adaptation
@@ -95,6 +128,13 @@ const ScholarHome = ({ scholar = MOCK_SCHOLAR, onStartSession }) => {
         {/* THE INVITATION - One action, one moment */}
         {/* ═══════════════════════════════════════════════════════════════ */}
         
+        {/* THE INVITATION - One action, one moment */}
+        {!scholar.sessionReady ? (
+        <AllDoneState ageBand={ageBand} onViewProgress={onViewProgress} />
+        ) : (
+
+
+
         <div className="w-full max-w-sm">
           <div className={cn(
             "rounded-3xl p-8 text-center transition-all",
@@ -161,6 +201,7 @@ const ScholarHome = ({ scholar = MOCK_SCHOLAR, onStartSession }) => {
             </button>
           </div>
         </div>
+        )}
 
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* NOTHING ELSE - The absence is intentional */}
